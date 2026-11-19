@@ -231,6 +231,26 @@ ol.schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; 
 .schedule time { font-family: var(--font-data); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .bake-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 
+.method {
+  margin-top: 20px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px 18px 20px; display: grid; gap: 14px; min-width: 0;
+}
+.method-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.method h2 { font-family: var(--font-display); font-weight: 700; font-size: 19px; margin: 0; }
+.method-lead { margin: 0; max-width: 72ch; font-size: 14.5px; background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.method-lead b { font-family: var(--font-data); font-weight: 500; }
+ol.steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 72ch; }
+ol.steps li { counter-increment: step; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; align-items: start; }
+ol.steps li::before {
+  content: counter(step); font-family: var(--font-data); font-size: 12.5px; color: var(--accent);
+  border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; display: grid; place-items: center;
+}
+ol.steps li > div { padding-top: 2px; }
+ol.steps b { font-weight: 600; }
+ol.steps .q { font-family: var(--font-data); font-size: 0.94em; white-space: nowrap; }
+.method-src { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 72ch; }
+.method-src a { color: var(--accent); }
+
 details.how {
   margin-top: 20px; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 14px 18px;
@@ -343,6 +363,19 @@ details.how code { font-family: var(--font-data); font-size: 13px; background: v
       </section>
     </aside>
   </main>
+
+  <section class="method" id="method" aria-labelledby="method-title">
+    <div class="method-head">
+      <h2 id="method-title">Mixing and kneading</h2>
+      <div class="seg" role="group" aria-label="How you knead" id="knead-seg">
+        <button type="button" data-knead="hand" aria-pressed="true">By hand</button>
+        <button type="button" data-knead="mixer" aria-pressed="false">Stand mixer</button>
+      </div>
+    </div>
+    <p class="method-lead" id="method-lead"></p>
+    <ol class="steps" id="steps"></ol>
+    <p class="method-src">The water temperature uses the bakers' desired-dough-temperature rule, with friction factors of about 6–8 °F by hand and 20–24 °F in a stand mixer (<a href="https://www.kingarthurbaking.com/blog/2018/08/27/determining-the-friction-factor-in-baking" target="_blank" rel="noopener">King Arthur Baking</a>, <a href="https://www.americastestkitchen.com/how_tos/5818-precise-water-temperature-for-the-perfect-loaf" target="_blank" rel="noopener">America's Test Kitchen</a>). Mixer makers advise only the lowest speeds with a dough hook (<a href="https://www.kitchenaid.com/pinch-of-help/stand-mixers/how-to-use-a-dough-hook.html" target="_blank" rel="noopener">KitchenAid</a>). Kneading times follow <a href="https://www.breville.com/us/en/blog/cooking/kneading-dough-in-stand-mixer.html" target="_blank" rel="noopener">Breville</a> and <a href="https://www.restaurantsupply.com/blogs/food-service-buying-guide/how-bowl-speed-affects-gluten-development" target="_blank" rel="noopener">commercial mixing guides</a>.</p>
+  </section>
 
   <details class="how" id="how">
     <summary>How the yeast is worked out</summary>
@@ -471,6 +504,9 @@ details.how code { font-family: var(--font-data); font-size: 13px; background: v
   let mode = saved.mode === "balls" ? "balls" : "flour";
   let yeastType = YEAST[saved.yeast] ? saved.yeast : "idy";
   let base = BASES[saved.base] ? saved.base : "recipes";
+  // How much kneading warms the dough, in °C of water to take off (friction factor: ~6–8 °F by hand, ~20–24 °F in a stand mixer).
+  const FRICTION = { hand: 3.5, mixer: 12 };
+  let knead = saved.knead === "mixer" ? "mixer" : "hand";
   let bakeAt = saved.bakeAt || null; // string from datetime-local, or null = automatic
 
   const inputs = {};
@@ -529,6 +565,8 @@ details.how code { font-family: var(--font-data); font-size: 13px; background: v
   yeastBtns.forEach(b => b.addEventListener("click", () => { yeastType = b.dataset.yeast; update(); }));
   const baseBtns = [...document.querySelectorAll("#base-seg button")];
   baseBtns.forEach(b => b.addEventListener("click", () => { base = b.dataset.base; update(); }));
+  const kneadBtns = [...document.querySelectorAll("#knead-seg button")];
+  kneadBtns.forEach(b => b.addEventListener("click", () => { knead = b.dataset.knead; update(); }));
 
   const bakeInput = document.getElementById("bake-at");
   bakeInput.addEventListener("change", () => { bakeAt = bakeInput.value || null; update(); });
@@ -585,10 +623,12 @@ details.how code { font-family: var(--font-data); font-size: 13px; background: v
     if (capped) notes.push(`<div class="warn">That is too little time for the dough to rise properly. Add at least an hour or two at room temperature.</div>`);
     else if (idyPct > 1.5) notes.push(`<div class="warn">This is a lot of yeast, and the dough will taste of it. A few more hours of fermentation gives a better crust.</div>`);
     if (state.fridge > 0 && state.after < 2) notes.push(`<div class="warn">Cold dough tears when you stretch it. Give the balls at least 2 hours out of the fridge.</div>`);
+    let trick = null;
     if (enough && yeast < 1 && !capped) {
       let ratio = 100;
       if (yeast * ratio > water * 0.8) ratio = 50;
       const mix = yeast * (ratio + 1), used = yeast * ratio;
+      trick = { ratio, mix, used };
       notes.push(`<div class="note"><b>Too little to weigh?</b> Stir 1 g of yeast into ${ratio} g of the recipe water. Add <b>${Math.round(mix)} g</b> of that mix to the flour, then <b>${Math.round(water - used)} g</b> of plain water. Throw the rest of the mix away.</div>`);
     }
     document.getElementById("help").innerHTML = notes.join("");
@@ -606,17 +646,83 @@ details.how code { font-family: var(--font-data); font-size: 13px; background: v
     rows.push([y.name, yeast, pct, "yeast"]);
     let html = rows.map(([n, g, p, cls]) =>
       `<tr${cls ? ` class="${cls}"` : ""}><td>${n}</td><td class="g">${enough || n !== y.name ? fmtG(g) : "–"} g</td><td class="p">${fmtP(p)}%</td></tr>`).join("");
-    const ballInfo = mode === "balls"
-      ? `${state.balls} × ${state.ballW} g`
-      : `${Math.max(1, Math.floor(total / 250))} × ${Math.round(total / Math.max(1, Math.floor(total / 250)))} g`;
+    const ballsN = mode === "balls" ? state.balls : Math.max(1, Math.floor(total / 250));
+    const ballW = mode === "balls" ? state.ballW : Math.round(total / ballsN);
+    const ballInfo = `${ballsN} × ${ballW} g`;
     html += `<tr class="total"><td>Dough</td><td class="g">${Math.round(total)} g</td><td class="p"></td></tr>`;
     html += `<tr><td colspan="3" style="color:var(--muted);font-size:13px">${mode === "balls" ? "Makes" : "About"} ${ballInfo} balls</td></tr>`;
     document.getElementById("recipe").innerHTML = html;
 
+    renderMethod({ flour, water, salt, oil, yeast, y, trick, ballsN, ballW });
     drawChart(sim);
     renderSchedule(sim.total);
     syncPresets();
     save();
+  }
+
+  function renderMethod(r) {
+    const g = v => `<span class="q">${fmtG(v)} g</span>`;
+    const gi = v => `<span class="q">${Math.round(v)} g</span>`;
+    const hand = knead === "hand";
+    const wet = state.hydration >= 68;
+    const ady = yeastType === "ady" && !r.trick;
+    const hold = !hand && wet ? Math.round(r.water * 0.1) : 0;
+    const mainWater = Math.max(0, r.water - (ady ? 30 : 0) - (r.trick ? r.trick.used : 0) - hold);
+    const waterT = Math.max(2, Math.round(state.roomT - FRICTION[knead]));
+    const room = fmtH(state.roomT);
+    kneadBtns.forEach(b => b.setAttribute("aria-pressed", b.dataset.knead === knead));
+
+    document.getElementById("method-lead").innerHTML =
+      `Use water at about <b>${waterT} °C</b>. Kneading warms the dough, ${hand ? "a little by hand" : "a lot in a mixer"}, so cooler water lets it finish near room temperature (${room} °C). The yeast amount assumes that.` +
+      (waterT <= 8 ? " Mix water from the fridge with a little tap water." : "");
+
+    const steps = [];
+    steps.push(`<b>Water and salt.</b> Pour ${gi(mainWater)} of water at about ${waterT} °C into ${hand ? "a large bowl" : "the mixer bowl"}. Add ${g(r.salt)} salt and stir until it dissolves.` +
+      (hold ? ` Keep another ${gi(hold)} of water aside for later.` : ""));
+
+    if (r.trick) {
+      steps.push(`<b>Yeast.</b> Stir 1 g of ${r.y.name.toLowerCase()} into ${r.trick.ratio} g of room-temperature water${yeastType === "ady" ? " and wait 10 minutes" : ""}. Add ${gi(r.trick.mix)} of this mix to the bowl and throw the rest away.`);
+    } else if (yeastType === "fresh") {
+      steps.push(`<b>Yeast.</b> Crumble in ${g(r.yeast)} fresh yeast and stir until it dissolves.`);
+    } else if (ady) {
+      steps.push(`<b>Yeast.</b> Stir ${g(r.yeast)} active dry yeast into 30 g of lukewarm water (about 35 °C). Wait 10 minutes, then add it to the bowl.`);
+    }
+    const idyInFlour = yeastType === "idy" && !r.trick;
+
+    if (hand) {
+      steps.push(`<b>Flour.</b> ${idyInFlour ? `Stir ${g(r.yeast)} instant yeast into the ${gi(r.flour)} flour. ` : ""}Add the flour a third at a time, mixing with a spoon or your hand, until no dry flour is left. This takes about 3 minutes and the dough looks rough.`);
+      steps.push(`<b>Rest.</b> Cover the bowl and leave it for 15 minutes. The flour soaks up the water and the dough gets easier to knead.`);
+      if (!wet) {
+        steps.push(`<b>Knead.</b> Tip the dough onto a clean counter without extra flour. Push it away with the heel of your hand, fold it back over itself, turn it a quarter and repeat. Keep going for 8 to 10 minutes. It starts sticky and turns smooth. If it sticks, use a scraper or wet hands, not more flour.`);
+      } else {
+        steps.push(`<b>Stretch and fold.</b> At ${state.hydration}% water the dough is too wet to knead on the counter. Wet your hand, lift one side of the dough, stretch it up and fold it over the middle. Turn the bowl a quarter and repeat 4 times. Cover, wait 15 minutes, and do 3 more sets the same way, about 1 hour in all. That hour counts as time out of the fridge` +
+          (state.fridge > 0 && state.before < 1 ? `, so set "Out of the fridge, before" to at least 1 h.` : "."));
+      }
+    } else {
+      steps.push(`<b>Flour.</b> Fit the dough hook. ${idyInFlour ? `Stir ${g(r.yeast)} instant yeast into the ${gi(r.flour)} flour and add it to the bowl.` : `Add the ${gi(r.flour)} flour.`} Mix on the lowest speed for 2 to 3 minutes, until no dry flour is left.`);
+      steps.push(`<b>Rest.</b> Switch off, cover the bowl and leave it for 10 to 15 minutes. The flour soaks up the water and the kneading goes faster.`);
+      steps.push(`<b>Knead.</b> Knead on low speed for 6 to 8 minutes, until the dough wraps around the hook and leaves the sides of the bowl clean. Stay on the lowest one or two speeds. Faster heats the dough and strains the motor. If the dough climbs up the hook, stop and push it back down.` +
+        (wet ? ` In the last 3 to 4 minutes, pour in the ${gi(hold)} of water you kept aside, a little at a time, and let each splash disappear before adding more.` : "") +
+        (r.flour > 1000 ? ` With more than 1 kg of flour, check your mixer's limit for yeast dough. If the motor struggles, knead in two batches.` : ""));
+    }
+    if (r.oil > 0) steps.push(`<b>Oil.</b> Add the ${g(r.oil)} oil in the last 2 minutes and ${hand ? (wet ? "fold" : "knead") : "mix"} until it disappears.`);
+    if (!hand) steps.push(`<b>Finish by hand.</b> Tip the dough onto the counter and knead it for 30 seconds into a smooth ball.`);
+    steps.push(`<b>Check.</b> Pull a small piece thin between your fingers. If it stretches thin enough to let light through before it tears, the dough is ready. If it tears early, ${hand && wet ? "do one more set of folds" : "knead 2 more minutes"}. A thermometer in the middle should read about ${room} °C. If it reads warmer, use colder water next time.`);
+
+    const balls = `${r.ballsN} × ${r.ballW} g`;
+    let next;
+    if (state.fridge > 0) {
+      next = state.before > 0
+        ? `Put the dough in a lightly oiled container with a lid. Leave it at room temperature for ${fmtH(state.before)} h, then put it in the fridge for ${fmtH(state.fridge)} h.`
+        : `Put the dough in a lightly oiled container with a lid and straight into the fridge for ${fmtH(state.fridge)} h.`;
+      next += ` Divide it into ${balls} balls before it goes in the fridge or when it comes out.`;
+      if (state.after > 0) next += ` Leave the balls covered at room temperature for ${fmtH(state.after)} h before you stretch them.`;
+    } else {
+      next = `Put the dough in a lightly oiled container with a lid and leave it at room temperature. About halfway through the ${fmtH(state.before)} h, divide it into ${balls} balls and let them finish rising, covered.`;
+    }
+    steps.push(`<b>Next.</b> ${next} The schedule has the clock times.`);
+
+    document.getElementById("steps").innerHTML = steps.map(s => `<li><div>${s}</div></li>`).join("");
   }
 
   function drawChart(sim) {
@@ -688,7 +794,7 @@ details.how code { font-family: var(--font-data); font-size: 13px; background: v
   }
 
   function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ v: state, mode, yeast: yeastType, base, bakeAt })); } catch (e) {}
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ v: state, mode, yeast: yeastType, base, knead, bakeAt })); } catch (e) {}
   }
 
   // phone bar: show when the answer card is off screen

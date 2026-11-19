@@ -40,6 +40,18 @@ The calculator uses Craig's baker's yeast prediction model from the pizzamaking.
 
 Under 1 g of yeast, the page explains how to dissolve 1 g in some of the recipe water and add only part of it.
 
+## Mixing and kneading
+
+Below the result, step-by-step instructions use the recipe's own amounts, with a switch between **By hand** and **Stand mixer**:
+
+- **Water temperature.** The yeast amount assumes the dough finishes kneading at room temperature. Kneading warms the dough, so the page uses the bakers' desired-dough-temperature rule (`water = 3 × target − room − flour − friction`). With the flour at room temperature and the target equal to room temperature, that becomes `water = room − friction`. Friction is 3.5 °C by hand and 12 °C in a stand mixer, from published friction factors of about 6–8 °F by hand and 20–24 °F in a stand mixer.
+- **Order.** Salt dissolved in the water. Fresh yeast crumbled into the water. Active dry yeast soaked in 30 g of lukewarm water first. Instant yeast stirred into the flour.
+- **By hand.** Mix, rest 15 minutes, knead 8–10 minutes. At 68% water or more, the page gives 4 sets of stretch and folds in the bowl instead.
+- **Stand mixer.** Dough hook. Mix 2–3 minutes on the lowest speed, rest 10–15 minutes, then knead 6–8 minutes on the lowest one or two speeds. At 68% water or more, 10% of the water is held back and added during the last minutes.
+- **Then** oil (if any), the windowpane test, a target dough temperature, and what to do next according to the schedule.
+
+Sources: [King Arthur Baking](https://www.kingarthurbaking.com/blog/2018/08/27/determining-the-friction-factor-in-baking) and [America's Test Kitchen](https://www.americastestkitchen.com/how_tos/5818-precise-water-temperature-for-the-perfect-loaf) on friction factors, [KitchenAid](https://www.kitchenaid.com/pinch-of-help/stand-mixers/how-to-use-a-dough-hook.html) on dough hook speeds, [Breville](https://www.breville.com/us/en/blog/cooking/kneading-dough-in-stand-mixer.html) and [a commercial mixing guide](https://www.restaurantsupply.com/blogs/food-service-buying-guide/how-bowl-speed-affects-gluten-development) on kneading times.
+
 ## Compared with published recipes
 
 Instant yeast as % of flour, with 21 °C room, 4 °C fridge and 2.8% salt:
