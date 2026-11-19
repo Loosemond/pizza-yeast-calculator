@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Pizza dough calculator: set the flour and the hours in and out of the fridge, get the yeast.">
+<title>Pizza Yeast Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a prep table. Controls on the left like a recipe card, a sticky "ticket" on the right with the yeast number. */
+:root {
+  --bg: #eef1ef;
+  --surface: #ffffff;
+  --ink: #1b2321;
+  --muted: #5a6662;
+  --line: #d3dad7;
+  --accent: #c0391f;
+  --accent-ink: #ffffff;
+  --room: #d4851a;
+  --room-soft: #f7e6cc;
+  --cold: #2a76b0;
+  --cold-soft: #d6e7f4;
+  --warn-bg: #fdf0d6;
+  --warn-fg: #6e4a00;
+  --chip: #e3e8e6;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111615; --surface: #1a201f; --ink: #e7ecea; --muted: #9aa6a2; --line: #2d3634;
+    --accent: #f0694d; --accent-ink: #1a0b07; --room: #f0a63e; --room-soft: #3a2c17;
+    --cold: #61a9e2; --cold-soft: #17293a; --warn-bg: #3a2e12; --warn-fg: #f4d58f; --chip: #252d2b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111615; --surface: #1a201f; --ink: #e7ecea; --muted: #9aa6a2; --line: #2d3634;
+  --accent: #f0694d; --accent-ink: #1a0b07; --room: #f0a63e; --room-soft: #3a2c17;
+  --cold: #61a9e2; --cold-soft: #17293a; --warn-bg: #3a2e12; --warn-fg: #f4d58f; --chip: #252d2b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0;
+}
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header { display: grid; gap: 6px; margin-bottom: 22px; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 4.4vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+header p { margin: 0; color: var(--muted); max-width: 60ch; }
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.controls { display: grid; gap: 16px; min-width: 0; }
+fieldset {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 18px 18px 20px;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+legend {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  padding: 0 6px;
+  margin-left: -6px;
+}
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* slider rows */
+.row { display: grid; gap: 6px; min-width: 0; }
+.row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.row label { font-weight: 500; }
+.row .hint { font-size: 12.5px; color: var(--muted); }
+.num {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+.num input {
+  width: 6.2ch;
+  font: inherit;
+  font-size: 15px;
+  text-align: right;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+.num input.wide { width: 7.4ch; }
+.num span { color: var(--muted); font-size: 13px; min-width: 2ch; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; height: 22px; }
+.row.room input[type="range"] { accent-color: var(--room); }
+.row.cold input[type="range"] { accent-color: var(--cold); }
+.tag {
+  display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px;
+  vertical-align: 1px;
+}
+.tag.room { background: var(--room); }
+.tag.cold { background: var(--cold); }
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .two { grid-template-columns: minmax(0, 1fr); } }
+
+/* segmented controls */
+.seg {
+  display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  background: var(--chip); border-radius: 8px; padding: 3px; gap: 3px;
+  max-width: 100%;
+}
+.seg button {
+  font: inherit; font-size: 13.5px; font-weight: 500;
+  border: 0; border-radius: 6px; padding: 7px 12px; cursor: pointer;
+  background: transparent; color: var(--muted); white-space: nowrap;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seg-label { display: grid; gap: 6px; justify-items: start; }
+.seg-label .hint { font-size: 12.5px; color: var(--muted); }
+details.how table { border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 460px; }
+details.how th, details.how td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+details.how th { font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+details.how td.n { font-family: var(--font-data); white-space: nowrap; }
+details.how .tbl { overflow-x: auto; }
+details.how h3 { font-family: var(--font-display); font-size: 15px; margin: 8px 0 0; }
+details.how ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+details.how a { color: var(--accent); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.presets button {
+  font: inherit; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  border-radius: 999px; padding: 5px 12px;
+}
+.presets button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+input[type="datetime-local"] {
+  font: inherit; font-family: var(--font-data); font-size: 14px;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; max-width: 100%;
+}
+
+/* ticket */
+.ticket {
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-width: 0;
+}
+@media (max-width: 880px) { .ticket { position: static; } }
+.ticket-top { padding: 20px 20px 16px; border-bottom: 1px dashed var(--line); display: grid; gap: 4px; }
+.yeast-amount {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(46px, 9vw, 64px); line-height: 1; letter-spacing: -0.02em;
+  color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.yeast-amount small { font-size: 0.42em; font-weight: 500; color: var(--ink); margin-left: 4px; letter-spacing: 0; }
+.yeast-sub { font-family: var(--font-data); font-size: 13.5px; color: var(--muted); }
+.yeast-sub b { color: var(--ink); font-weight: 500; }
+.ticket section { padding: 16px 20px; border-bottom: 1px dashed var(--line); display: grid; gap: 10px; min-width: 0; }
+.ticket section:last-child { border-bottom: 0; }
+
+.note { font-size: 13.5px; background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.note b { font-weight: 600; }
+.warn { font-size: 13.5px; background: var(--warn-bg); color: var(--warn-fg); border-radius: 8px; padding: 10px 12px; }
+
+table.recipe { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.recipe td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.recipe tr:last-child td { border-bottom: 0; }
+.recipe td.g { text-align: right; font-family: var(--font-data); white-space: nowrap; }
+.recipe td.p { text-align: right; font-family: var(--font-data); color: var(--muted); font-size: 12.5px; width: 5.5em; }
+.recipe tr.total td { font-weight: 600; border-top: 1px solid var(--ink); }
+.recipe tr.yeast td:first-child { color: var(--accent); font-weight: 600; }
+
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-family: var(--font-data); font-size: 10.5px; }
+.chart .grid-line { stroke: var(--line); stroke-width: 1; }
+.chart .temp { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.chart .room-band { fill: var(--room-soft); }
+.chart .cold-band { fill: var(--cold-soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 2px; background: var(--ink); vertical-align: 3px; margin-right: 6px; }
+
+ol.schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.schedule li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.schedule time { font-family: var(--font-data); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bake-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+details.how {
+  margin-top: 20px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 18px;
+}
+details.how summary { cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+details.how div { max-width: 68ch; display: grid; gap: 10px; padding-top: 10px; color: var(--ink); }
+details.how p { margin: 0; }
+details.how code { font-family: var(--font-data); font-size: 13px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+
+/* phone: a bar with the answer while you scroll the controls */
+.mbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: var(--ink); color: var(--bg);
+  padding-top: 10px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  font-family: var(--font-data); font-size: 14px;
+  transition: transform .2s ease;
+}
+.mbar b { font-family: var(--font-display); font-size: 20px; }
+.mbar.off { transform: translateY(110%); }
+@media (min-width: 881px) { .mbar { display: none; } }
+@media (max-width: 880px) { .wrap { padding-bottom: 90px; } }
+@media (prefers-reduced-motion: reduce) { .mbar { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Pizza Yeast Calculator</h1>
+    <p>Set how much flour you use and how long the dough spends in and out of the fridge. You get the yeast, and the rest of the recipe.</p>
+  </header>
+
+  <main class="grid">
+    <div class="controls">
+      <fieldset>
+        <legend>Dough</legend>
+        <div class="seg-label">
+          <span class="eyebrow">Size the batch by</span>
+          <div class="seg" role="group" aria-label="Size the batch by">
+            <button type="button" id="mode-flour" aria-pressed="true">Flour</button>
+            <button type="button" id="mode-balls" aria-pressed="false">Dough balls</button>
+          </div>
+        </div>
+        <div id="flour-rows"></div>
+        <div id="ball-rows" class="two" hidden></div>
+        <div id="recipe-rows" class="two"></div>
+        <div class="seg-label">
+          <span class="eyebrow">Yeast</span>
+          <div class="seg" role="group" aria-label="Yeast type" id="yeast-seg">
+            <button type="button" data-yeast="idy" aria-pressed="true">Instant dry</button>
+            <button type="button" data-yeast="ady" aria-pressed="false">Active dry</button>
+            <button type="button" data-yeast="fresh" aria-pressed="false">Fresh</button>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Fermentation</legend>
+        <div class="seg-label">
+          <span class="eyebrow">Quick start</span>
+          <div class="presets" id="presets"></div>
+        </div>
+        <div id="temp-rows" class="two"></div>
+        <div id="time-rows"></div>
+        <div class="seg-label">
+          <span class="eyebrow">Starting point</span>
+          <div class="seg" role="group" aria-label="Starting point" id="base-seg">
+            <button type="button" data-base="recipes" aria-pressed="true">Typical recipes</button>
+            <button type="button" data-base="craig" aria-pressed="false">Craig's chart</button>
+          </div>
+          <span class="hint" id="base-hint"></span>
+        </div>
+        <div id="adjust-rows"></div>
+      </fieldset>
+    </div>
+
+    <aside class="ticket" aria-live="polite">
+      <div class="ticket-top" id="answer">
+        <span class="eyebrow" id="yeast-label">Instant dry yeast</span>
+        <div class="yeast-amount" id="yeast-g">0 <small>g</small></div>
+        <div class="yeast-sub" id="yeast-sub"></div>
+      </div>
+      <section id="help-section" hidden>
+        <div id="help"></div>
+      </section>
+      <section>
+        <span class="eyebrow">Recipe</span>
+        <table class="recipe"><tbody id="recipe"></tbody></table>
+      </section>
+      <section>
+        <span class="eyebrow">Dough temperature</span>
+        <svg class="chart" id="chart" viewBox="0 0 400 150" role="img" aria-label="Dough temperature over the fermentation"></svg>
+        <div class="legend">
+          <span><i></i>Dough</span>
+          <span><span class="tag room"></span>Room</span>
+          <span><span class="tag cold"></span>Fridge</span>
+        </div>
+      </section>
+      <section>
+        <span class="eyebrow">Schedule</span>
+        <div class="bake-row">
+          <label for="bake-at">Bake at</label>
+          <input type="datetime-local" id="bake-at" step="900">
+        </div>
+        <ol class="schedule" id="schedule"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <details class="how" id="how">
+    <summary>How the yeast is worked out</summary>
+    <div>
+      <p>The calculator uses <strong>Craig's baker's yeast prediction model</strong> from the pizzamaking.com forum. Most serious pizza calculators are built on it. It has two parts.</p>
+      <p><strong>1. Temperature.</strong> Yeast speed follows the growth curve from Gänzle, Ehmann &amp; Hammes (1998), a study of sourdough yeast, with Craig's fitted values: <code>rate = a · x^b · e^(c·x)</code>, where <code>x = 45 − T</code>, <code>a = 0.02646</code>, <code>b = 2.037</code> and <code>c = −0.199</code>. Compared with 21 °C, an hour at 4 °C counts 0.10 h, at 6 °C 0.13 h, at 18 °C 0.69 h, at 24 °C 1.37 h and at 30 °C 2.3 h. The curve peaks at about 35 °C.</p>
+      <p><strong>2. Amount.</strong> 0.048% instant yeast makes a dough ready in 12 hours at 21 °C (70 °F). For other times, yeast scales with <code>(hours ÷ 12)^−1.6</code>. With these settings the model reproduces Craig's chart for a 4 °C fridge: 0.63% for 24 h (chart 0.64%) and 0.21% for 48 h (chart 0.20%).</p>
+      <p>The calculator follows the dough temperature minute by minute and adds up the hours. Dough does not get cold the moment it goes in the fridge. Pizzeria guidance is 1.5 to 3.5 hours to cool dough balls, depending on their size, so the model lets the dough temperature drift toward the fridge (or the room) with a 1¼-hour time constant.</p>
+      <h3>Two corrections</h3>
+      <p><strong>Salt.</strong> Salt slows yeast a lot. Belz et al. (2017) measured gas in 3 hours: dough with about 2.9% salt (on flour) made 38% less gas than dough with 1.7%. The calculator takes Craig's dough as 2.8% salt and scales the yeast by the measured gas ratio. That gives × 0.72 for 2% salt, × 1.08 for 3% and × 1.29 for 3.5%. The study ran 3 hours at 30 °C, and in a long cold rise the effect may be smaller.</p>
+      <p><strong>Starting point.</strong> Many forum users find Craig's numbers on the low side, and published recipes use more. "Typical recipes" uses 1.5 × Craig, which lands in the middle of the published numbers below. "Craig's chart" uses the model unchanged.</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Schedule (instant yeast)</th><th>Typical recipes</th><th>Craig's chart</th><th>Published</th></tr></thead>
+          <tbody>
+            <tr><td>12 h at 22 °C</td><td class="n">0.061%</td><td class="n">0.041%</td><td>0.07–0.08% (Gigacalculator)</td></tr>
+            <tr><td>24 h at 22 °C</td><td class="n">0.020%</td><td class="n">0.013%</td><td>0.025% (Gigacalculator)</td></tr>
+            <tr><td>2 h + 48 h at 4 °C + 3 h</td><td class="n">0.12%</td><td class="n">0.077%</td><td>0.10–0.20% (Dough Lab 0.2, Impasto 0.17, My Pizza Night 0.10–0.15, Fond 0.10–0.15)</td></tr>
+            <tr><td>1 h + 72 h at 4 °C + 3 h</td><td class="n">0.092%</td><td class="n">0.061%</td><td>0.05–0.12% (Dough Lab 0.1, Impasto 0.12, My Pizza Night 0.05–0.08, Fond 0.10–0.15)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Yeast types are converted with the usual 1 : 0.4 : 0.33 ratio of fresh to active dry to instant, so active dry is 1.2 × instant and fresh is 3 × instant.</p>
+      <p>Your fridge matters most. A 6 °C fridge ferments a third faster than a 4 °C one, so put a thermometer in it once. Then use <em>Your adjustment</em>: if the dough was slow, add 25 to 50%; if it was over-risen, take some off.</p>
+      <h3>Sources</h3>
+      <ul>
+        <li>TXCraig1, <a href="https://www.pizzamaking.com/forum/index.php?topic=26831.0" target="_blank" rel="noopener">Baker's yeast quantity prediction model</a>, pizzamaking.com. The fitted values are as implemented in <a href="https://github.com/Alexbl00m/dough-designer-pro/pull/2" target="_blank" rel="noopener">Dough Designer Pro</a>, which checks them against the chart.</li>
+        <li>Gänzle, Ehmann &amp; Hammes (1998), <a href="https://doi.org/10.1128/aem.64.7.2616-2623.1998" target="_blank" rel="noopener">Modeling of growth of Lactobacillus sanfranciscensis and Candida milleri in response to process parameters of sourdough fermentation</a>, Applied and Environmental Microbiology 64:2616–2623.</li>
+        <li>Belz, Axel, Beauchamp, Zannini, Arendt &amp; Czerny (2017), <a href="https://doi.org/10.3390/foods6080066" target="_blank" rel="noopener">Sodium chloride and its influence on the aroma profile of yeasted bread</a>, Foods 6:66, Table 2.</li>
+        <li>Tom Lehmann, cross-stacking times for dough balls, <a href="https://pizzatoday.com/?p=130064" target="_blank" rel="noopener">Pizza Today</a>.</li>
+        <li>Published amounts: <a href="https://www.gigacalculator.com/calculators/pizza-dough-calculator.php" target="_blank" rel="noopener">Gigacalculator</a>, <a href="https://dough-lab.com/blog/cold-ferment-pizza-dough" target="_blank" rel="noopener">Dough Lab</a>, <a href="https://impasto.pizza/guides/cold-ferment" target="_blank" rel="noopener">Impasto</a>, <a href="https://mypizzanight.com/guides/cold-fermentation-pizza-dough" target="_blank" rel="noopener">My Pizza Night</a>, <a href="https://fond.kitchen/guides/pizza-dough/pizza-dough-fermentation/" target="_blank" rel="noopener">Fond</a>.</li>
+      </ul>
+    </div>
+  </details>
+</div>
+
+<div class="mbar off" id="mbar" aria-hidden="true">
+  <span id="mbar-label">Instant dry yeast</span>
+  <span><b id="mbar-g">0 g</b> · <span id="mbar-p">0%</span></span>
+</div>
+
+<script>
+(() => {
+  // ---------- model ----------
+  // Craig's baker's yeast prediction model (pizzamaking.com, topic 26831):
+  // temperature follows the Gänzle et al. (1998) growth curve with Craig's fitted values,
+  // and 0.048 % instant yeast is ready in 12 h at 21.1 °C (70 °F). Dose scales with hours^-1.6.
+  const G = { a: 0.02645608, b: 2.037020784, c: -0.198964236, tmax: 45 };
+  const TOPT = G.tmax + G.b / G.c; // about 34.8 °C, the fastest point of the curve
+  const growth = T => { const t = Math.min(Math.max(T, -2), TOPT), x = G.tmax - t; return G.a * Math.pow(x, G.b) * Math.exp(G.c * x); };
+  const TREF = 21.1, ANCHOR = 0.048, POW = 1.6, TAU = 1.25;
+  const rate = T => growth(T) / growth(TREF);
+  const BASES = {
+    recipes: { factor: 1.5, hint: "1.5 × Craig's chart, in the middle of published recipes." },
+    craig:   { factor: 1,   hint: "Craig's model as published. Expect a slower rise." }
+  };
+  // Salt: total CO2 in 3 h against salt on flour (Belz et al. 2017, Foods 6:66, Table 2).
+  const SALT_CO2 = [[0, 2241], [0.43, 2108], [1.72, 1581], [2.87, 982], [4.36, 573], [5.8, 313]];
+  const SALT_REF = 2.8;
+  function co2AtSalt(s) {
+    const p = SALT_CO2;
+    s = Math.min(Math.max(s, 0), p[p.length - 1][0]);
+    let i = 0;
+    while (i < p.length - 2 && s > p[i + 1][0]) i++;
+    const f = (s - p[i][0]) / (p[i + 1][0] - p[i][0]);
+    return Math.exp(Math.log(p[i][1]) + f * (Math.log(p[i + 1][1]) - Math.log(p[i][1])));
+  }
+  const saltFactor = s => co2AtSalt(SALT_REF) / co2AtSalt(s);
+  const YEAST = {
+    idy:   { name: "Instant dry yeast", factor: 1,    tsp: 3.1 },
+    ady:   { name: "Active dry yeast",  factor: 1.2,  tsp: 2.8 },
+    fresh: { name: "Fresh yeast",       factor: 3,    tsp: null }
+  };
+
+  function simulate(s) {
+    const segs = [
+      { h: s.before, T: s.roomT, kind: "room" },
+      { h: s.fridge, T: s.fridgeT, kind: "cold" },
+      { h: s.after,  T: s.roomT, kind: "room" }
+    ];
+    const total = s.before + s.fridge + s.after;
+    const dt = 1 / 60;
+    const every = Math.max(1, Math.round(total / dt / 240));
+    let T = s.roomT, E = 0, t = 0, step = 0;
+    const pts = [[0, T]];
+    for (const seg of segs) {
+      const n = Math.round(seg.h / dt);
+      for (let i = 0; i < n; i++) {
+        T += (seg.T - T) * (1 - Math.exp(-dt / TAU));
+        E += rate(T) * dt;
+        t += dt; step++;
+        if (step % every === 0) pts.push([t, T]);
+      }
+    }
+    pts.push([t, T]);
+    return { E, pts, segs, total };
+  }
+
+  // ---------- controls ----------
+  const DEF = {
+    flour: 1000, balls: 4, ballW: 250, hydration: 65, salt: 2.8, oil: 0,
+    roomT: 21, fridgeT: 4, before: 2, fridge: 24, after: 4, adjust: 0
+  };
+  const ROWS = {
+    "flour-rows":  [["flour", "Flour", 200, 3000, 10, "g", "", "wide"]],
+    "ball-rows":   [["balls", "Number of balls", 1, 20, 1, "×", ""], ["ballW", "Ball weight", 150, 450, 5, "g", "Neapolitan 250–280 g"]],
+    "recipe-rows": [["hydration", "Water", 50, 85, 1, "%", "of the flour weight"], ["salt", "Salt", 0, 4, 0.1, "%", "slows the yeast, so more salt needs more yeast"], ["oil", "Oil", 0, 6, 0.5, "%", "0 for Neapolitan"]],
+    "temp-rows":   [["roomT", "Room temperature", 15, 32, 0.5, "°C", "", "", "room"], ["fridgeT", "Fridge temperature", 1, 10, 0.5, "°C", "most fridges run 3–6 °C", "", "cold"]],
+    "time-rows":   [["before", "Out of the fridge, before", 0, 24, 0.5, "h", "bulk rise after mixing", "", "room"],
+                    ["fridge", "In the fridge", 0, 120, 1, "h", "", "", "cold"],
+                    ["after",  "Out of the fridge, after", 0, 24, 0.5, "h", "balls warm up and finish rising", "", "room"]],
+    "adjust-rows": [["adjust", "Your adjustment", -50, 100, 5, "%", "Dough slow last time? Add some. Over-risen? Take some off."]]
+  };
+  const PRESETS = [
+    ["Same day, 6 h",  { before: 6,  fridge: 0,  after: 0 }],
+    ["12 h room",      { before: 12, fridge: 0,  after: 0 }],
+    ["24 h fridge",    { before: 2,  fridge: 24, after: 4 }],
+    ["48 h fridge",    { before: 2,  fridge: 48, after: 3 }],
+    ["72 h fridge",    { before: 1,  fridge: 72, after: 3 }]
+  ];
+
+  const STORE_KEY = "pizza-yeast-calc-v1";
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { saved = {}; }
+  const state = Object.assign({}, DEF, saved.v || {});
+  let mode = saved.mode === "balls" ? "balls" : "flour";
+  let yeastType = YEAST[saved.yeast] ? saved.yeast : "idy";
+  let base = BASES[saved.base] ? saved.base : "recipes";
+  let bakeAt = saved.bakeAt || null; // string from datetime-local, or null = automatic
+
+  const inputs = {};
+  for (const [host, rows] of Object.entries(ROWS)) {
+    const el = document.getElementById(host);
+    for (const [key, label, min, max, step, unit, hint, wide, kind] of rows) {
+      const row = document.createElement("div");
+      row.className = "row" + (kind ? " " + kind : "");
+      row.innerHTML =
+        `<div class="row-head"><label for="n-${key}">${kind ? `<span class="tag ${kind}"></span>` : ""}${label}</label>` +
+        `<span class="num"><input id="n-${key}" type="number" inputmode="decimal" min="${Math.min(0, min)}" step="${step}" class="${wide || ""}"><span>${unit}</span></span></div>` +
+        `<input id="r-${key}" type="range" min="${min}" max="${max}" step="${step}" aria-label="${label}">` +
+        (hint ? `<span class="hint" id="h-${key}">${hint}</span>` : `<span class="hint" id="h-${key}" hidden></span>`);
+      el.appendChild(row);
+      const num = row.querySelector("input[type=number]");
+      const rng = row.querySelector("input[type=range]");
+      inputs[key] = { num, rng };
+      num.value = state[key];
+      rng.value = state[key];
+      rng.addEventListener("input", () => { state[key] = +rng.value; num.value = rng.value; update(); });
+      num.addEventListener("input", () => {
+        const v = parseFloat(num.value);
+        if (!isFinite(v) || v < Math.min(0, min)) return;
+        state[key] = v; rng.value = v; update();
+      });
+      num.addEventListener("blur", () => { num.value = state[key]; });
+    }
+  }
+
+  const presetHost = document.getElementById("presets");
+  const presetBtns = PRESETS.map(([label, p]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label;
+    b.addEventListener("click", () => {
+      for (const k in p) { state[k] = p[k]; inputs[k].num.value = p[k]; inputs[k].rng.value = p[k]; }
+      update();
+    });
+    presetHost.appendChild(b);
+    return [b, p];
+  });
+
+  const modeFlour = document.getElementById("mode-flour");
+  const modeBalls = document.getElementById("mode-balls");
+  function setMode(m) {
+    mode = m;
+    modeFlour.setAttribute("aria-pressed", m === "flour");
+    modeBalls.setAttribute("aria-pressed", m === "balls");
+    document.getElementById("flour-rows").hidden = m !== "flour";
+    document.getElementById("ball-rows").hidden = m !== "balls";
+    update();
+  }
+  modeFlour.addEventListener("click", () => setMode("flour"));
+  modeBalls.addEventListener("click", () => setMode("balls"));
+
+  const yeastBtns = [...document.querySelectorAll("#yeast-seg button")];
+  yeastBtns.forEach(b => b.addEventListener("click", () => { yeastType = b.dataset.yeast; update(); }));
+  const baseBtns = [...document.querySelectorAll("#base-seg button")];
+  baseBtns.forEach(b => b.addEventListener("click", () => { base = b.dataset.base; update(); }));
+
+  const bakeInput = document.getElementById("bake-at");
+  bakeInput.addEventListener("change", () => { bakeAt = bakeInput.value || null; update(); });
+
+  // ---------- formatting ----------
+  const fmtG = g => g < 1 ? g.toFixed(2) : g < 20 ? g.toFixed(1) : Math.round(g).toString();
+  const fmtP = p => p < 0.1 ? p.toFixed(3) : p < 1 ? p.toFixed(2) : p.toFixed(1);
+  const fmtH = h => (Math.round(h * 10) / 10).toString().replace(/\.0$/, "");
+  function fmtTsp(tsp) {
+    const eighths = Math.round(tsp * 8);
+    if (eighths === 0) return null;
+    const whole = Math.floor(eighths / 8), rest = eighths % 8;
+    const frac = { 0: "", 1: "⅛", 2: "¼", 3: "⅜", 4: "½", 5: "⅝", 6: "¾", 7: "⅞" }[rest];
+    return (whole ? whole : "") + frac + " tsp";
+  }
+  const pad = n => String(n).padStart(2, "0");
+  const toLocalInput = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const fmtWhen = d => d.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  // ---------- render ----------
+  function update() {
+    const sim = simulate(state);
+    const y = YEAST[yeastType];
+    const enough = sim.total > 0 && sim.E > 0.05;
+    const mult = BASES[base].factor * saltFactor(state.salt) * (1 + state.adjust / 100);
+    let idyPct = enough ? ANCHOR * Math.pow(sim.E / 12, -POW) * mult : 0;
+    const capped = idyPct > 3;
+    if (capped) idyPct = 3;
+    const pct = idyPct * y.factor;
+
+    const h = state.hydration / 100, s = state.salt / 100, o = state.oil / 100, yp = pct / 100;
+    let flour;
+    if (mode === "balls") flour = (state.balls * state.ballW) / (1 + h + s + o + yp);
+    else flour = state.flour;
+    const water = flour * h, salt = flour * s, oil = flour * o, yeast = flour * yp;
+    const total = flour + water + salt + oil + yeast;
+
+    // headline
+    yeastBtns.forEach(b => b.setAttribute("aria-pressed", b.dataset.yeast === yeastType));
+    baseBtns.forEach(b => b.setAttribute("aria-pressed", b.dataset.base === base));
+    document.getElementById("base-hint").textContent = BASES[base].hint;
+    document.getElementById("yeast-label").textContent = y.name;
+    document.getElementById("yeast-g").innerHTML = `${enough ? fmtG(yeast) : "–"} <small>g</small>`;
+    const tsp = y.tsp && enough ? fmtTsp(yeast / y.tsp) : null;
+    document.getElementById("yeast-sub").innerHTML = enough
+      ? `<b>${fmtP(pct)}%</b> of the flour${tsp ? ` · about ${tsp}` : ""}<br>${fmtH(sim.total)} h in total, works like ${fmtH(sim.E)} h at 21 °C`
+      : "Add some fermentation time.";
+    document.getElementById("mbar-label").textContent = y.name;
+    document.getElementById("mbar-g").textContent = enough ? fmtG(yeast) + " g" : "–";
+    document.getElementById("mbar-p").textContent = enough ? fmtP(pct) + "%" : "";
+
+    // help + warnings
+    const notes = [];
+    if (capped) notes.push(`<div class="warn">That is too little time for the dough to rise properly. Add at least an hour or two at room temperature.</div>`);
+    else if (idyPct > 1.5) notes.push(`<div class="warn">This is a lot of yeast, and the dough will taste of it. A few more hours of fermentation gives a better crust.</div>`);
+    if (state.fridge > 0 && state.after < 2) notes.push(`<div class="warn">Cold dough tears when you stretch it. Give the balls at least 2 hours out of the fridge.</div>`);
+    if (enough && yeast < 1 && !capped) {
+      let ratio = 100;
+      if (yeast * ratio > water * 0.8) ratio = 50;
+      const mix = yeast * (ratio + 1), used = yeast * ratio;
+      notes.push(`<div class="note"><b>Too little to weigh?</b> Stir 1 g of yeast into ${ratio} g of the recipe water. Add <b>${Math.round(mix)} g</b> of that mix to the flour, then <b>${Math.round(water - used)} g</b> of plain water. Throw the rest of the mix away.</div>`);
+    }
+    document.getElementById("help").innerHTML = notes.join("");
+    document.getElementById("help").style.display = "grid";
+    document.getElementById("help").style.gap = "8px";
+    document.getElementById("help-section").hidden = notes.length === 0;
+
+    // recipe
+    const rows = [
+      ["Flour", flour, 100],
+      ["Water", water, state.hydration],
+      ["Salt", salt, state.salt]
+    ];
+    if (oil > 0) rows.push(["Oil", oil, state.oil]);
+    rows.push([y.name, yeast, pct, "yeast"]);
+    let html = rows.map(([n, g, p, cls]) =>
+      `<tr${cls ? ` class="${cls}"` : ""}><td>${n}</td><td class="g">${enough || n !== y.name ? fmtG(g) : "–"} g</td><td class="p">${fmtP(p)}%</td></tr>`).join("");
+    const ballInfo = mode === "balls"
+      ? `${state.balls} × ${state.ballW} g`
+      : `${Math.max(1, Math.floor(total / 250))} × ${Math.round(total / Math.max(1, Math.floor(total / 250)))} g`;
+    html += `<tr class="total"><td>Dough</td><td class="g">${Math.round(total)} g</td><td class="p"></td></tr>`;
+    html += `<tr><td colspan="3" style="color:var(--muted);font-size:13px">${mode === "balls" ? "Makes" : "About"} ${ballInfo} balls</td></tr>`;
+    document.getElementById("recipe").innerHTML = html;
+
+    drawChart(sim);
+    renderSchedule(sim.total);
+    syncPresets();
+    save();
+  }
+
+  function drawChart(sim) {
+    const W = 400, H = 150, L = 30, R = 8, T = 8, B = 22;
+    const svg = document.getElementById("chart");
+    const total = sim.total;
+    if (total <= 0) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">No fermentation time set</text>`; return; }
+    const yMax = Math.max(25, Math.ceil((state.roomT + 3) / 5) * 5);
+    const x = t => L + (t / total) * (W - L - R);
+    const y = v => T + (1 - v / yMax) * (H - T - B);
+    let out = "";
+    let t0 = 0;
+    for (const s of sim.segs) {
+      if (s.h <= 0) continue;
+      out += `<rect class="${s.kind}-band" x="${x(t0).toFixed(1)}" y="${T}" width="${(x(t0 + s.h) - x(t0)).toFixed(1)}" height="${H - T - B}"/>`;
+      t0 += s.h;
+    }
+    const yStep = yMax > 30 ? 10 : 5;
+    for (let v = 0; v <= yMax; v += yStep) {
+      out += `<line class="grid-line" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
+      out += `<text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${v}°</text>`;
+    }
+    const xStep = total <= 8 ? 1 : total <= 16 ? 2 : total <= 36 ? 6 : total <= 96 ? 12 : 24;
+    for (let t = 0; t <= total + 1e-6; t += xStep) {
+      const xx = x(t);
+      if (xx > W - R - 14 && t !== total) continue;
+      out += `<text x="${xx}" y="${H - 6}" text-anchor="${t === 0 ? "start" : "middle"}">${t}h</text>`;
+    }
+    const d = sim.pts.map((p, i) => `${i ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
+    out += `<path class="temp" d="${d}"/>`;
+    svg.innerHTML = out;
+  }
+
+  function renderSchedule(totalH) {
+    let bake;
+    if (bakeAt) bake = new Date(bakeAt);
+    if (!bake || isNaN(bake)) {
+      // first 19:30 that leaves enough time from now
+      const earliest = new Date(Date.now() + totalH * 3600e3);
+      bake = new Date(earliest); bake.setHours(19, 30, 0, 0);
+      if (bake < earliest) bake.setDate(bake.getDate() + 1);
+    }
+    if (document.activeElement !== bakeInput) bakeInput.value = toLocalInput(bake);
+    const ms = h => h * 3600e3;
+    const mix = new Date(bake - ms(totalH));
+    const steps = [];
+    if (state.fridge > 0) {
+      const into = new Date(+mix + ms(state.before));
+      const out = new Date(+into + ms(state.fridge));
+      if (state.before > 0) {
+        steps.push([mix, "Mix and knead. Leave at room temperature."]);
+        steps.push([into, "Into the fridge."]);
+      } else steps.push([mix, "Mix, knead, and put straight into the fridge."]);
+      steps.push([out, state.after > 0 ? "Out of the fridge. Ball the dough if you haven't yet." : "Out of the fridge."]);
+    } else {
+      steps.push([mix, "Mix and knead. Leave at room temperature."]);
+    }
+    steps.push([bake, "Stretch and bake."]);
+    let html = steps.map(([d, txt]) => `<li><time datetime="${d.toISOString()}">${fmtWhen(d)}</time><span>${txt}</span></li>`).join("");
+    if (mix < new Date(Date.now() - 5 * 60e3)) html += `<li><span></span><span class="warn">The mixing time has already passed. Pick a later bake time or shorten the schedule.</span></li>`;
+    document.getElementById("schedule").innerHTML = html;
+  }
+
+  function syncPresets() {
+    for (const [b, p] of presetBtns) {
+      const on = Object.keys(p).every(k => state[k] === p[k]);
+      b.setAttribute("aria-pressed", on);
+    }
+  }
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ v: state, mode, yeast: yeastType, base, bakeAt })); } catch (e) {}
+  }
+
+  // phone bar: show when the answer card is off screen
+  const mbar = document.getElementById("mbar");
+  try {
+    const io = new IntersectionObserver(([e]) => mbar.classList.toggle("off", e.isIntersecting));
+    io.observe(document.getElementById("answer"));
+  } catch (e) { mbar.classList.remove("off"); }
+
+  setMode(mode);
+})();
+</script>
+</body>
+</html>
